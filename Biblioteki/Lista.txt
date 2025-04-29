@@ -1,0 +1,11 @@
+Wszystkie biblioteki pisane są do AtMega32
+
+lcd.c -> obsługa wyświetlacza lcd
+rs232.c ->  komunikacja przez rs232
+owi.c -> komunikacja przez interfejs one wire
+twi.c ->komunikacja przez interfejs two wire
+temp.c -> obsługa czujnika temperatury
+spi.c -> komunikacja przez interfejs spi
+rtc.c -> zegar czasu rzeczywistego
+eeprom.c -> pamięć EEPROM
+
