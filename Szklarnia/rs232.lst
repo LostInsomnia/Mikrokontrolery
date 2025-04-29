@@ -1,0 +1,328 @@
+   1               		.file	"rs232.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               	.global	USART_init
+  12               	USART_init:
+  13               	.LFB0:
+  14               		.file 1 "rs232.c"
+   1:rs232.c       **** #include "rs232.h" 
+   2:rs232.c       **** 
+   3:rs232.c       **** volatile uint8_t sign =0;
+   4:rs232.c       **** 
+   5:rs232.c       **** volatile char *buffer;
+   6:rs232.c       **** volatile uint8_t bufferRead[MAXSIZE];
+   7:rs232.c       **** volatile uint8_t index=0;
+   8:rs232.c       **** volatile uint8_t end=0;
+   9:rs232.c       **** 
+  10:rs232.c       **** void USART_init(uint8_t ubrr)
+  11:rs232.c       **** {
+  15               		.loc 1 11 0
+  16               		.cfi_startproc
+  17               	.LVL0:
+  18               	/* prologue: function */
+  19               	/* frame size = 0 */
+  20               	/* stack size = 0 */
+  21               	.L__stack_usage = 0
+  12:rs232.c       **** 	//Ustawianie baud
+  13:rs232.c       **** 	UBRRH = (uint8_t)ubrr>>8;//MSB
+  22               		.loc 1 13 0
+  23 0000 10BC      		out 0x20,__zero_reg__
+  14:rs232.c       **** 	UBRRL = (uint8_t)ubrr;//LSB
+  24               		.loc 1 14 0
+  25 0002 89B9      		out 0x9,r24
+  15:rs232.c       **** 	
+  16:rs232.c       **** 	//Odbiornik i Transmiter
+  17:rs232.c       **** 	UCSRB |=(1<<RXEN)|(1<<TXEN);
+  26               		.loc 1 17 0
+  27 0004 8AB1      		in r24,0xa
+  28               	.LVL1:
+  29 0006 8861      		ori r24,lo8(24)
+  30 0008 8AB9      		out 0xa,r24
+  31               	.LVL2:
+  18:rs232.c       **** 	
+  19:rs232.c       **** 	//Przerwanie RX
+  20:rs232.c       **** 	UCSRB |=(1<<RXCIE);
+  32               		.loc 1 20 0
+  33 000a 579A      		sbi 0xa,7
+  21:rs232.c       **** 	
+  22:rs232.c       **** 	//Ustawianie formatu
+  23:rs232.c       **** 	UCSRC |=(1<<URSEL)|(1<<UCSZ1)|(1<<UCSZ0);
+  34               		.loc 1 23 0
+  35 000c 80B5      		in r24,0x20
+  36 000e 8668      		ori r24,lo8(-122)
+  37 0010 80BD      		out 0x20,r24
+  38 0012 0895      		ret
+  39               		.cfi_endproc
+  40               	.LFE0:
+  42               	.global	USART_wait_for_empty
+  44               	USART_wait_for_empty:
+  45               	.LFB1:
+  24:rs232.c       **** }
+  25:rs232.c       **** void USART_wait_for_empty(void)
+  26:rs232.c       **** {
+  46               		.loc 1 26 0
+  47               		.cfi_startproc
+  48               	/* prologue: function */
+  49               	/* frame size = 0 */
+  50               	/* stack size = 0 */
+  51               	.L__stack_usage = 0
+  52               	.L3:
+  27:rs232.c       **** 	//Czekanie na flagę UDRE -> buffer UDR jest pusty
+  28:rs232.c       **** 	while(!(UCSRA & (1<<UDRE)));
+  53               		.loc 1 28 0 discriminator 1
+  54 0014 5D9B      		sbis 0xb,5
+  55 0016 00C0      		rjmp .L3
+  56               	/* epilogue start */
+  29:rs232.c       **** }
+  57               		.loc 1 29 0
+  58 0018 0895      		ret
+  59               		.cfi_endproc
+  60               	.LFE1:
+  62               	.global	USART_send
+  64               	USART_send:
+  65               	.LFB2:
+  30:rs232.c       **** void USART_send(char* text)
+  31:rs232.c       **** {
+  66               		.loc 1 31 0
+  67               		.cfi_startproc
+  68               	.LVL3:
+  69 001a CF93      		push r28
+  70               	.LCFI0:
+  71               		.cfi_def_cfa_offset 3
+  72               		.cfi_offset 28, -2
+  73 001c DF93      		push r29
+  74               	.LCFI1:
+  75               		.cfi_def_cfa_offset 4
+  76               		.cfi_offset 29, -3
+  77               	/* prologue: function */
+  78               	/* frame size = 0 */
+  79               	/* stack size = 2 */
+  80               	.L__stack_usage = 2
+  81 001e EC01      		movw r28,r24
+  32:rs232.c       **** 	USART_wait_for_empty();
+  82               		.loc 1 32 0
+  83 0020 0E94 0000 		call USART_wait_for_empty
+  84               	.LVL4:
+  33:rs232.c       **** 	buffer = (uint8_t *)text;
+  85               		.loc 1 33 0
+  86 0024 D093 0000 		sts buffer+1,r29
+  87 0028 C093 0000 		sts buffer,r28
+  34:rs232.c       **** 	//przerwanie -> transmisja
+  35:rs232.c       **** 	UCSRB|=(1<<UDRIE);
+  88               		.loc 1 35 0
+  89 002c 559A      		sbi 0xa,5
+  90               	/* epilogue start */
+  36:rs232.c       **** }
+  91               		.loc 1 36 0
+  92 002e DF91      		pop r29
+  93 0030 CF91      		pop r28
+  94               	.LVL5:
+  95 0032 0895      		ret
+  96               		.cfi_endproc
+  97               	.LFE2:
+  99               	.global	__vector_13
+ 101               	__vector_13:
+ 102               	.LFB3:
+  37:rs232.c       **** 
+  38:rs232.c       **** ISR(USART_RXC_vect)
+  39:rs232.c       **** {
+ 103               		.loc 1 39 0
+ 104               		.cfi_startproc
+ 105 0034 1F92      		push r1
+ 106               	.LCFI2:
+ 107               		.cfi_def_cfa_offset 3
+ 108               		.cfi_offset 1, -2
+ 109 0036 0F92      		push r0
+ 110               	.LCFI3:
+ 111               		.cfi_def_cfa_offset 4
+ 112               		.cfi_offset 0, -3
+ 113 0038 0FB6      		in r0,__SREG__
+ 114 003a 0F92      		push r0
+ 115 003c 1124      		clr __zero_reg__
+ 116 003e 8F93      		push r24
+ 117               	.LCFI4:
+ 118               		.cfi_def_cfa_offset 5
+ 119               		.cfi_offset 24, -4
+ 120 0040 EF93      		push r30
+ 121               	.LCFI5:
+ 122               		.cfi_def_cfa_offset 6
+ 123               		.cfi_offset 30, -5
+ 124 0042 FF93      		push r31
+ 125               	.LCFI6:
+ 126               		.cfi_def_cfa_offset 7
+ 127               		.cfi_offset 31, -6
+ 128               	/* prologue: Signal */
+ 129               	/* frame size = 0 */
+ 130               	/* stack size = 6 */
+ 131               	.L__stack_usage = 6
+  40:rs232.c       **** 	sign=UDR;
+ 132               		.loc 1 40 0
+ 133 0044 8CB1      		in r24,0xc
+ 134 0046 8093 0000 		sts sign,r24
+  41:rs232.c       **** 	if(index>=(MAXSIZE-1)) index =0;
+ 135               		.loc 1 41 0
+ 136 004a 8091 0000 		lds r24,index
+ 137 004e 8F31      		cpi r24,lo8(31)
+ 138 0050 00F0      		brlo .L9
+ 139               		.loc 1 41 0 is_stmt 0 discriminator 1
+ 140 0052 1092 0000 		sts index,__zero_reg__
+ 141               	.L9:
+  42:rs232.c       **** 	bufferRead[index]=sign;
+ 142               		.loc 1 42 0 is_stmt 1
+ 143 0056 E091 0000 		lds r30,index
+ 144 005a F0E0      		ldi r31,0
+ 145 005c 8091 0000 		lds r24,sign
+ 146 0060 E050      		subi r30,lo8(-(bufferRead))
+ 147 0062 F040      		sbci r31,hi8(-(bufferRead))
+ 148 0064 8083      		st Z,r24
+  43:rs232.c       **** 	index++;
+ 149               		.loc 1 43 0
+ 150 0066 8091 0000 		lds r24,index
+ 151 006a 8F5F      		subi r24,lo8(-(1))
+ 152 006c 8093 0000 		sts index,r24
+  44:rs232.c       **** 	if(sign =='\n' || sign == '\r') end = 1;
+ 153               		.loc 1 44 0
+ 154 0070 8091 0000 		lds r24,sign
+ 155 0074 8A30      		cpi r24,lo8(10)
+ 156 0076 01F0      		breq .L10
+ 157               		.loc 1 44 0 is_stmt 0 discriminator 2
+ 158 0078 8091 0000 		lds r24,sign
+ 159 007c 8D30      		cpi r24,lo8(13)
+ 160 007e 01F4      		brne .L11
+ 161               	.L10:
+ 162               		.loc 1 44 0 discriminator 3
+ 163 0080 81E0      		ldi r24,lo8(1)
+ 164 0082 8093 0000 		sts end,r24
+ 165 0086 00C0      		rjmp .L8
+ 166               	.L11:
+  45:rs232.c       **** 	else end=0;
+ 167               		.loc 1 45 0 is_stmt 1
+ 168 0088 1092 0000 		sts end,__zero_reg__
+ 169               	.L8:
+ 170               	/* epilogue start */
+  46:rs232.c       **** }
+ 171               		.loc 1 46 0
+ 172 008c FF91      		pop r31
+ 173 008e EF91      		pop r30
+ 174 0090 8F91      		pop r24
+ 175 0092 0F90      		pop r0
+ 176 0094 0FBE      		out __SREG__,r0
+ 177 0096 0F90      		pop r0
+ 178 0098 1F90      		pop r1
+ 179 009a 1895      		reti
+ 180               		.cfi_endproc
+ 181               	.LFE3:
+ 183               	.global	__vector_14
+ 185               	__vector_14:
+ 186               	.LFB4:
+  47:rs232.c       **** 
+  48:rs232.c       **** ISR(USART_UDRE_vect)
+  49:rs232.c       **** {
+ 187               		.loc 1 49 0
+ 188               		.cfi_startproc
+ 189 009c 1F92      		push r1
+ 190               	.LCFI7:
+ 191               		.cfi_def_cfa_offset 3
+ 192               		.cfi_offset 1, -2
+ 193 009e 0F92      		push r0
+ 194               	.LCFI8:
+ 195               		.cfi_def_cfa_offset 4
+ 196               		.cfi_offset 0, -3
+ 197 00a0 0FB6      		in r0,__SREG__
+ 198 00a2 0F92      		push r0
+ 199 00a4 1124      		clr __zero_reg__
+ 200 00a6 8F93      		push r24
+ 201               	.LCFI9:
+ 202               		.cfi_def_cfa_offset 5
+ 203               		.cfi_offset 24, -4
+ 204 00a8 9F93      		push r25
+ 205               	.LCFI10:
+ 206               		.cfi_def_cfa_offset 6
+ 207               		.cfi_offset 25, -5
+ 208 00aa EF93      		push r30
+ 209               	.LCFI11:
+ 210               		.cfi_def_cfa_offset 7
+ 211               		.cfi_offset 30, -6
+ 212 00ac FF93      		push r31
+ 213               	.LCFI12:
+ 214               		.cfi_def_cfa_offset 8
+ 215               		.cfi_offset 31, -7
+ 216               	/* prologue: Signal */
+ 217               	/* frame size = 0 */
+ 218               	/* stack size = 7 */
+ 219               	.L__stack_usage = 7
+  50:rs232.c       **** 	if(*buffer) UDR=*(buffer++);
+ 220               		.loc 1 50 0
+ 221 00ae E091 0000 		lds r30,buffer
+ 222 00b2 F091 0000 		lds r31,buffer+1
+ 223 00b6 8081      		ld r24,Z
+ 224 00b8 8823      		tst r24
+ 225 00ba 01F0      		breq .L17
+ 226               		.loc 1 50 0 is_stmt 0 discriminator 1
+ 227 00bc CF01      		movw r24,r30
+ 228 00be 0196      		adiw r24,1
+ 229 00c0 9093 0000 		sts buffer+1,r25
+ 230 00c4 8093 0000 		sts buffer,r24
+ 231 00c8 8081      		ld r24,Z
+ 232 00ca 8CB9      		out 0xc,r24
+ 233 00cc 00C0      		rjmp .L16
+ 234               	.L17:
+  51:rs232.c       **** 	else UCSRB &=~(1<<UDRIE);//wyłączenie przerwania gdy buffer pusty
+ 235               		.loc 1 51 0 is_stmt 1
+ 236 00ce 5598      		cbi 0xa,5
+ 237               	.L16:
+ 238               	/* epilogue start */
+  52:rs232.c       **** }
+ 239               		.loc 1 52 0
+ 240 00d0 FF91      		pop r31
+ 241 00d2 EF91      		pop r30
+ 242 00d4 9F91      		pop r25
+ 243 00d6 8F91      		pop r24
+ 244 00d8 0F90      		pop r0
+ 245 00da 0FBE      		out __SREG__,r0
+ 246 00dc 0F90      		pop r0
+ 247 00de 1F90      		pop r1
+ 248 00e0 1895      		reti
+ 249               		.cfi_endproc
+ 250               	.LFE4:
+ 252               	.global	end
+ 253               		.section .bss
+ 256               	end:
+ 257 0000 00        		.zero	1
+ 258               	.global	index
+ 261               	index:
+ 262 0001 00        		.zero	1
+ 263               		.comm	bufferRead,32,1
+ 264               		.comm	buffer,2,1
+ 265               	.global	sign
+ 268               	sign:
+ 269 0002 00        		.zero	1
+ 270               		.text
+ 271               	.Letext0:
+ 272               		.file 2 "/usr/lib/avr/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 rs232.c
+     /tmp/ccffrhbO.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccffrhbO.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccffrhbO.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccffrhbO.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccffrhbO.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccffrhbO.s:12     .text:0000000000000000 USART_init
+     /tmp/ccffrhbO.s:44     .text:0000000000000014 USART_wait_for_empty
+     /tmp/ccffrhbO.s:64     .text:000000000000001a USART_send
+                            *COM*:0000000000000002 buffer
+     /tmp/ccffrhbO.s:101    .text:0000000000000034 __vector_13
+     /tmp/ccffrhbO.s:268    .bss:0000000000000002 sign
+     /tmp/ccffrhbO.s:261    .bss:0000000000000001 index
+                            *COM*:0000000000000020 bufferRead
+     /tmp/ccffrhbO.s:256    .bss:0000000000000000 end
+     /tmp/ccffrhbO.s:185    .text:000000000000009c __vector_14
+
+UNDEFINED SYMBOLS
+__do_clear_bss
